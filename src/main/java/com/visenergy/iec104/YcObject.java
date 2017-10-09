@@ -16,6 +16,8 @@ import org.apache.commons.logging.LogFactory;
 import java.io.IOException;
 import java.math.BigDecimal;
 import java.sql.Timestamp;
+import java.text.ParseException;
+import java.text.SimpleDateFormat;
 import java.util.*;
 import java.util.concurrent.*;
 
@@ -84,6 +86,7 @@ public class YcObject {
     private double FULL_HOURS_YEAR=0;          //年满发小时数
     private double FULL_HOURS_ALL=0;           //累计满发小时数
     private boolean flag=false;
+    Map timeMap = new HashMap();               //存放上一次时间
 
     private Connection conn = null;
     private Channel channel = null;
@@ -105,6 +108,96 @@ public class YcObject {
 
             public void run() {
                 if(flag==true){
+                    /*
+                     * 判断时间点是否在18:00和06:00之间并且OUTPUT_P是否小于0.1，是，将OUTPUT_P置为零
+                     * 判断是否为下一小时，是，将ELEC_PROD_HOUR置为零
+                     * 判断是否为下一天，是，将ELEC_PROD_DAILY置为零
+                     * 判断是否为下一月，是，将ELEC_PROD_MONTH置为零
+                     * 判断是否为下一年，是，将ELEC_PROD_YEAR置为零
+                     */
+                    Timestamp timestamp = new Timestamp(System.currentTimeMillis());
+                    SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");//设置日期格式
+                    String toDate = sdf.format(timestamp);
+                    Date date = null;
+                    try {
+                        date = sdf.parse(toDate);
+                    } catch (ParseException e) {
+                        e.printStackTrace();
+                    }
+
+                    Calendar calendar = Calendar.getInstance();
+                    calendar.setTime(date);
+
+                    int year = calendar.get(Calendar.YEAR);
+                    int month = calendar.get(Calendar.MONTH) + 1;
+                    int day = calendar.get(Calendar.DATE);
+                    int hour = calendar.get(Calendar.HOUR_OF_DAY);
+
+                    //今日0点
+                    StringBuffer stringBuffer1 = new StringBuffer();
+                    stringBuffer1.append(year + "-").append(month + "-").append(day + " 00:00:00");
+
+                    //今日6点
+                    StringBuffer stringBuffer2 = new StringBuffer();
+                    stringBuffer2.append(year + "-").append(month + "-").append(day + " 06:00:00");
+
+                    //今日18点
+                    StringBuffer stringBuffer3 = new StringBuffer();
+                    stringBuffer3.append(year + "-").append(month + "-").append(day + " 18:00:00");
+
+                    //明日0点
+                    StringBuffer stringBuffer4 = new StringBuffer();
+                    stringBuffer4.append(year + "-").append(month + "-").append((day + 1) + " 00:00:00");
+
+                    //判断时间点是否在00:00(今日)和06:00之间或者18:00和00::00(明日)之间并且OUTPUT_P是否小于0.1，是，将OUTPUT_P置为零
+                    if (((timestamp.after(Timestamp.valueOf(stringBuffer1.toString())) && timestamp.before(Timestamp.valueOf(stringBuffer2.toString())))
+                            || (timestamp.after(Timestamp.valueOf(stringBuffer3.toString()))
+                            && timestamp.before(Timestamp.valueOf(stringBuffer4.toString())))) && OUTPUT_P < 0.1) {
+                        OUTPUT_P = 0;
+                    }
+
+                    if (!timeMap.isEmpty()){
+                        String lastTime = sdf.format(timeMap.get("lastInsertTime"));
+                        String[] timeSplit1 = lastTime.split(" ");
+                        String[] timeSplit2 = timeSplit1[0].split("-");
+                        String[] timeSplit3 = timeSplit1[1].split(":");
+
+                        //获取上一条记录的插入时间，年、月、日、小时
+                        int yearTime = Integer.parseInt(timeSplit2[0]);
+                        int monthTime = Integer.parseInt(timeSplit2[1]);
+                        int dayTime = Integer.parseInt(timeSplit2[2]);
+                        int hourTime = Integer.parseInt(timeSplit3[0]);
+
+                        //判断是否为下一年，是，将ELEC_PROD_YEAR置为零
+                        if ((year - yearTime) != 0){
+                            ELEC_PROD_YEAR = 0;
+                            ELEC_PROD_MONTH = 0;
+                            ELEC_PROD_DAILY = 0;
+                            ELEC_PROD_HOUR = 0;
+                        }else {//同一年
+                            //判断是否为下一月，是，将ELEC_PROD_MONTH置为零
+                            if ((month - monthTime) != 0){
+                                ELEC_PROD_MONTH = 0;
+                                ELEC_PROD_DAILY = 0;
+                                ELEC_PROD_HOUR = 0;
+                            }else {//同一月
+                                //判断是否为下一天，是，将ELEC_PROD_DAILY置为零
+                                if ((day - dayTime) != 0){
+                                    ELEC_PROD_DAILY = 0;
+                                    ELEC_PROD_HOUR = 0;
+                                }else {//同一天
+                                    //判断是否为下一小时，是，将ELEC_PROD_HOUR置为零
+                                    if ((hour - hourTime) != 0){
+                                        ELEC_PROD_HOUR = 0;
+                                    }
+                                }
+                            }
+                        }
+                    }
+
+                    log.debug("当前时间：" + toDate + "\t" + "小时发电量：" + ELEC_PROD_HOUR + "\t" + "日发电量：" + ELEC_PROD_DAILY + "\t" + "月发电量：" + ELEC_PROD_MONTH + "\t" + "年发电量：" + ELEC_PROD_YEAR + "\t" + "发电功率：" + OUTPUT_P);
+                    timeMap.put("lastInsertTime", timestamp);
+
                     //逆变器数据采集表(历史表)插入语句
                     String sql = "INSERT INTO T_PVMANAGE_INVERTER_COLLECT(INVERTER_ID,ELEC_PROD_HOUR,ELEC_PROD_DAILY," +
                             "ELEC_PROD_MONTH,ELEC_PROD_YEAR,ELEC_PROD_ALL,OUTPUT_P,CONNECT_P,PEAK_POWER,REACTIVE_P," +
