@@ -180,18 +180,18 @@ public class YcObject {
                                 ELEC_PROD_MONTH = 0;
                                 ELEC_PROD_DAILY = 0;
                                 ELEC_PROD_HOUR = 0;
-                            }else {//同一月
+                            }/*else {//同一月
                                 //判断是否为下一天，是，将ELEC_PROD_DAILY置为零
                                 if ((day - dayTime) != 0){
                                     ELEC_PROD_DAILY = 0;
                                     ELEC_PROD_HOUR = 0;
-                                }/*else {//同一天
+                                }else {//同一天
                                     //判断是否为下一小时，是，将ELEC_PROD_HOUR置为零
                                     if ((hour - hourTime) != 0){
                                         ELEC_PROD_HOUR = 0;
                                     }
-                                }*/
-                            }
+                                }
+                            }*/
                         }
                     }
 
