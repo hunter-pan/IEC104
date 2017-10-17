@@ -115,7 +115,7 @@ public class YcObject {
                      * 判断是否为下一月，是，将ELEC_PROD_MONTH置为零
                      * 判断是否为下一年，是，将ELEC_PROD_YEAR置为零
                      */
-                    Timestamp timestamp = new Timestamp(System.currentTimeMillis() - 6*60*1000L);
+                    Timestamp timestamp = new Timestamp(System.currentTimeMillis() - 6*60*1000L - 36*1000L);
                     SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");//设置日期格式
                     String toDate = sdf.format(timestamp);
                     Date date = null;
@@ -185,12 +185,12 @@ public class YcObject {
                                 if ((day - dayTime) != 0){
                                     ELEC_PROD_DAILY = 0;
                                     ELEC_PROD_HOUR = 0;
-                                }else {//同一天
+                                }/*else {//同一天
                                     //判断是否为下一小时，是，将ELEC_PROD_HOUR置为零
                                     if ((hour - hourTime) != 0){
                                         ELEC_PROD_HOUR = 0;
                                     }
-                                }
+                                }*/
                             }
                         }
                     }
