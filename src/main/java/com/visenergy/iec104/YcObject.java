@@ -115,7 +115,7 @@ public class YcObject {
                      * 判断是否为下一月，是，将ELEC_PROD_MONTH置为零
                      * 判断是否为下一年，是，将ELEC_PROD_YEAR置为零
                      */
-                    Timestamp timestamp = new Timestamp(System.currentTimeMillis());
+                    Timestamp timestamp = new Timestamp(System.currentTimeMillis() - 6*60*1000L);
                     SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");//设置日期格式
                     String toDate = sdf.format(timestamp);
                     Date date = null;
@@ -205,8 +205,8 @@ public class YcObject {
                             "AC_UA,AC_UB,AC_UC,AC_IA,AC_IB,AC_IC,MACHINE_TEMP,GRID_FRQ,CONVERT_EFF,CO2_CUTS," +
                             "COAL_SAVE,CONVERT_BENF,CONNECT_STATUS,PV_CONNECT_STATUS,WARNING_STATUS,AMBIENT_TEMP," +
                             "RADIANT_QUANTITY_1,IRRADIANCE_1,RADIANT_QUANTITY_2,IRRADIANCE_2,DAMPNESS,PRESSURE,WIND_SPEED,WIND_DIR," +
-                            "FULL_HOURS_DAY,FULL_HOURS_MON,FULL_HOURS_YEAR,FULL_HOURS_ALL) " +
-                            "VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)";
+                            "FULL_HOURS_DAY,FULL_HOURS_MON,FULL_HOURS_YEAR,FULL_HOURS_ALL,TIME) " +
+                            "VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)";
                     //逆变器实时数据表更新语句
                     String inverter_data_now = "UPDATE T_PVMANAGE_INVERTER_COLLECT_C SET ELEC_PROD_HOUR=?,ELEC_PROD_DAILY=?," +
                             "ELEC_PROD_MONTH=?,ELEC_PROD_YEAR=?,ELEC_PROD_ALL=?,OUTPUT_P=?,CONNECT_P=?,PEAK_POWER=?," +
@@ -221,7 +221,7 @@ public class YcObject {
                             "RADIANT_QUANTITY_2,IRRADIANCE_2,DAMPNESS,PRESSURE) VALUES(?,?,?,?,?,?,?,?,?,?)";
 
                     DBConnection conn = SqlHelper.connPool.getConnection();
-                    Parameter[] params = new Parameter[54];
+                    Parameter[] params = new Parameter[55];
                     Parameter[] params_new_data = new Parameter[52];
                     Parameter[] params_metero_data = new Parameter[10];
 
@@ -325,6 +325,7 @@ public class YcObject {
                     params[51] = new Parameter("FULL_HOURS_MON",BaseTypes.DECIMAL,new BigDecimal(FULL_HOURS_MON).setScale(2,BigDecimal.ROUND_HALF_UP).doubleValue());
                     params[52] = new Parameter("FULL_HOURS_YEAR",BaseTypes.DECIMAL,new BigDecimal(FULL_HOURS_YEAR).setScale(2,BigDecimal.ROUND_HALF_UP).doubleValue());
                     params[53] = new Parameter("FULL_HOURS_ALL",BaseTypes.DECIMAL,new BigDecimal(FULL_HOURS_ALL).setScale(2,BigDecimal.ROUND_HALF_UP).doubleValue());
+                    params[53] = new Parameter("TIME",BaseTypes.TIMESTAMP,timestamp);
 
                     //将数据存入逆变器实时数据表
                     params_new_data[0]  = params[1];
@@ -377,7 +378,7 @@ public class YcObject {
                     params_new_data[47] = params[51];
                     params_new_data[48] = params[52];
                     params_new_data[49] = params[53];
-                    params_new_data[50] = new Parameter("TIME", BaseTypes.TIMESTAMP,new Timestamp(System.currentTimeMillis()));
+                    params_new_data[50] = new Parameter("TIME", BaseTypes.TIMESTAMP,timestamp);
                     params_new_data[51] = params[0];
 
                     //气象数据
