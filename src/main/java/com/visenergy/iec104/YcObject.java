@@ -325,7 +325,7 @@ public class YcObject {
                     params[51] = new Parameter("FULL_HOURS_MON",BaseTypes.DECIMAL,new BigDecimal(FULL_HOURS_MON).setScale(2,BigDecimal.ROUND_HALF_UP).doubleValue());
                     params[52] = new Parameter("FULL_HOURS_YEAR",BaseTypes.DECIMAL,new BigDecimal(FULL_HOURS_YEAR).setScale(2,BigDecimal.ROUND_HALF_UP).doubleValue());
                     params[53] = new Parameter("FULL_HOURS_ALL",BaseTypes.DECIMAL,new BigDecimal(FULL_HOURS_ALL).setScale(2,BigDecimal.ROUND_HALF_UP).doubleValue());
-                    params[53] = new Parameter("TIME",BaseTypes.TIMESTAMP,timestamp);
+                    params[54] = new Parameter("TIME",BaseTypes.TIMESTAMP,timestamp);
 
                     //将数据存入逆变器实时数据表
                     params_new_data[0]  = params[1];
