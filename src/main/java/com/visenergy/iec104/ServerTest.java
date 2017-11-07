@@ -168,6 +168,16 @@ public class ServerTest {
                             os.write((byte)Integer.parseInt(lis2[i],16));
                         }
 
+                        //生成1组
+                        String yx1 = GenerateYx.getYxData();
+
+                        String[] los1 = yx1.split(" ");
+
+                        System.out.println(yx1);
+                        for (int i = 0; i < los1.length; i++) {
+                            os.write((byte)Integer.parseInt(los1[i],16));
+                        }
+
                     } catch (Exception e) {
                         e.printStackTrace();
                     }

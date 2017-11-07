@@ -70,7 +70,7 @@ public class YcObject {
     private double COAL_SAVE=0;
     private double CONVERT_BENF=0;
     private int CONNECT_STATUS=0;
-    private int PV_CONNECT_STATUS=0;
+    private int PV_CONNECT_STATUS=0;           //闭锁状态
     private int WARNING_STATUS=0;
     private double AMBIENT_TEMP=0;             //环境温度
     private double RADIANT_QUANTITY_1=0;       //辐射量1
@@ -85,6 +85,14 @@ public class YcObject {
     private double FULL_HOURS_MON=0;           //月满发小时数
     private double FULL_HOURS_YEAR=0;          //年满发小时数
     private double FULL_HOURS_ALL=0;           //累计满发小时数
+    private double POWER_FACTOR = 0;           //功率因素
+    private double AB_U = 0;                   //AB线电压
+    private double BC_U = 0;                   //BC线电压
+    private double CA_U = 0;                   //CA线电压
+    private int SWITCH_STATUS = 0;             //开关机状态
+    private int NO_U_PROTECT = 0;              //零电压穿越保护
+    private int LOW_U_PROTECT = 0;             //低电压穿越保护
+    private int GD_EFF_PROTECT = 0;            //孤岛效应保护
     private boolean flag=false;
     Map timeMap = new HashMap();               //存放上一次时间
 
@@ -180,7 +188,7 @@ public class YcObject {
                                 ELEC_PROD_MONTH = 0;
                                 ELEC_PROD_DAILY = 0;
                                 ELEC_PROD_HOUR = 0;
-                            }/*else {//同一月
+                            }else {//同一月
                                 //判断是否为下一天，是，将ELEC_PROD_DAILY置为零
                                 if ((day - dayTime) != 0){
                                     ELEC_PROD_DAILY = 0;
@@ -191,7 +199,7 @@ public class YcObject {
                                         ELEC_PROD_HOUR = 0;
                                     }
                                 }
-                            }*/
+                            }
                         }
                     }
 
@@ -205,8 +213,8 @@ public class YcObject {
                             "AC_UA,AC_UB,AC_UC,AC_IA,AC_IB,AC_IC,MACHINE_TEMP,GRID_FRQ,CONVERT_EFF,CO2_CUTS," +
                             "COAL_SAVE,CONVERT_BENF,CONNECT_STATUS,PV_CONNECT_STATUS,WARNING_STATUS,AMBIENT_TEMP," +
                             "RADIANT_QUANTITY_1,IRRADIANCE_1,RADIANT_QUANTITY_2,IRRADIANCE_2,DAMPNESS,PRESSURE,WIND_SPEED,WIND_DIR," +
-                            "FULL_HOURS_DAY,FULL_HOURS_MON,FULL_HOURS_YEAR,FULL_HOURS_ALL,TIME) " +
-                            "VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)";
+                            "FULL_HOURS_DAY,FULL_HOURS_MON,FULL_HOURS_YEAR,FULL_HOURS_ALL,TIME,POWER_FACTOR,AB_U,BC_U,CA_U,SWITCH_STATUS,NO_U_PROTECT,LOW_U_PROTECT,GD_EFF_PROTECT) " +
+                            "VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)";
                     //逆变器实时数据表更新语句
                     String inverter_data_now = "UPDATE T_PVMANAGE_INVERTER_COLLECT_C SET ELEC_PROD_HOUR=?,ELEC_PROD_DAILY=?," +
                             "ELEC_PROD_MONTH=?,ELEC_PROD_YEAR=?,ELEC_PROD_ALL=?,OUTPUT_P=?,CONNECT_P=?,PEAK_POWER=?," +
@@ -214,15 +222,15 @@ public class YcObject {
                             "PV6_U=?,PV6_I=?,PV7_U=?,PV7_I=?,PV8_U=?,PV8_I=?,AC_UA=?,AC_UB=?,AC_UC=?,AC_IA=?,AC_IB=?,AC_IC=?," +
                             "MACHINE_TEMP=?,GRID_FRQ=?,CONVERT_EFF=?,CO2_CUTS=?,COAL_SAVE=?,CONVERT_BENF=?,AMBIENT_TEMP=?," +
                             "RADIANT_QUANTITY_1=?,IRRADIANCE_1=?,RADIANT_QUANTITY_2=?,IRRADIANCE_2=?,DAMPNESS=?,PRESSURE=?,WIND_SPEED=?,WIND_DIR=?," +
-                            "FULL_HOURS_DAY=?,FULL_HOURS_MON=?,FULL_HOURS_YEAR=?,FULL_HOURS_ALL=?,TIME=? " +
+                            "FULL_HOURS_DAY=?,FULL_HOURS_MON=?,FULL_HOURS_YEAR=?,FULL_HOURS_ALL=?,TIME=?,POWER_FACTOR=?,AB_U=?,BC_U=?,CA_U=? " +
                             "WHERE INVERTER_ID = ?";
                     //环境数据采集
                     String metero_sql = "INSERT INTO T_PVMANAGE_METERO(WIND_SPEED,WIND_DIREC,PANEL_TEMP,AMBIEN_TEMP,RADIANT_QUANTITY_1,IRRADIANCE_1," +
                             "RADIANT_QUANTITY_2,IRRADIANCE_2,DAMPNESS,PRESSURE) VALUES(?,?,?,?,?,?,?,?,?,?)";
 
                     DBConnection conn = SqlHelper.connPool.getConnection();
-                    Parameter[] params = new Parameter[55];
-                    Parameter[] params_new_data = new Parameter[52];
+                    Parameter[] params = new Parameter[63];
+                    Parameter[] params_new_data = new Parameter[56];
                     Parameter[] params_metero_data = new Parameter[10];
 
                     //逆变器数据采集历史表
@@ -316,7 +324,7 @@ public class YcObject {
                     params[42] = new Parameter("RADIANT_QUANTITY_1", BaseTypes.DECIMAL,new BigDecimal(RADIANT_QUANTITY_1).setScale(2,BigDecimal.ROUND_HALF_UP).doubleValue());
                     params[43] = new Parameter("IRRADIANCE_1",BaseTypes.DECIMAL,new BigDecimal(IRRADIANCE_1).setScale(2,BigDecimal.ROUND_HALF_UP).doubleValue() );
                     params[44] = new Parameter("RADIANT_QUANTITY_2", BaseTypes.DECIMAL,new BigDecimal(RADIANT_QUANTITY_2).setScale(2,BigDecimal.ROUND_HALF_UP).doubleValue());
-                    params[45] = new Parameter("IRRADIANCE_2",BaseTypes.DECIMAL,new BigDecimal(IRRADIANCE_1).setScale(2,BigDecimal.ROUND_HALF_UP).doubleValue() );
+                    params[45] = new Parameter("IRRADIANCE_2",BaseTypes.DECIMAL,new BigDecimal(IRRADIANCE_2).setScale(2,BigDecimal.ROUND_HALF_UP).doubleValue() );
                     params[46] = new Parameter("DAMPNESS",BaseTypes.DECIMAL,new BigDecimal(DAMPNESS).setScale(2,BigDecimal.ROUND_HALF_UP).doubleValue());
                     params[47] = new Parameter("PRESSURE",BaseTypes.DECIMAL,new BigDecimal(PRESSURE).setScale(2,BigDecimal.ROUND_HALF_UP).doubleValue());
                     params[48] = new Parameter("WIND_SPEED",BaseTypes.DECIMAL,new BigDecimal(WIND_SPEED).setScale(2,BigDecimal.ROUND_HALF_UP).doubleValue());
@@ -326,18 +334,27 @@ public class YcObject {
                     params[52] = new Parameter("FULL_HOURS_YEAR",BaseTypes.DECIMAL,new BigDecimal(FULL_HOURS_YEAR).setScale(2,BigDecimal.ROUND_HALF_UP).doubleValue());
                     params[53] = new Parameter("FULL_HOURS_ALL",BaseTypes.DECIMAL,new BigDecimal(FULL_HOURS_ALL).setScale(2,BigDecimal.ROUND_HALF_UP).doubleValue());
                     params[54] = new Parameter("TIME",BaseTypes.TIMESTAMP,timestamp);
+                    params[55] = new Parameter("POWER_FACTOR",BaseTypes.DECIMAL,new BigDecimal(POWER_FACTOR).setScale(2,BigDecimal.ROUND_HALF_UP).doubleValue());
+                    params[56] = new Parameter("AB_U",BaseTypes.DECIMAL,new BigDecimal(AB_U).setScale(2,BigDecimal.ROUND_HALF_UP).doubleValue());
+                    params[57] = new Parameter("BC_U",BaseTypes.DECIMAL,new BigDecimal(BC_U).setScale(2,BigDecimal.ROUND_HALF_UP).doubleValue());
+                    params[58] = new Parameter("CA_U",BaseTypes.DECIMAL,new BigDecimal(CA_U).setScale(2,BigDecimal.ROUND_HALF_UP).doubleValue());
+                    params[59] = new Parameter("SWITCH_STATUS", BaseTypes.INTEGER, SWITCH_STATUS);
+                    params[60] = new Parameter("NO_U_PROTECT", BaseTypes.INTEGER, NO_U_PROTECT);
+                    params[61] = new Parameter("LOW_U_PROTECT", BaseTypes.INTEGER, LOW_U_PROTECT);
+                    params[62] = new Parameter("GD_EFF_PROTECT", BaseTypes.INTEGER, GD_EFF_PROTECT);
+
 
                     //将数据存入逆变器实时数据表
-                    params_new_data[0]  = params[1];
-                    params_new_data[1]  = params[2];
-                    params_new_data[2]  = params[3];
-                    params_new_data[3]  = params[4];
-                    params_new_data[4]  = params[5];
-                    params_new_data[5]  = params[6];
-                    params_new_data[6]  = params[7];
-                    params_new_data[7]  = params[8];
-                    params_new_data[8]  = params[9];
-                    params_new_data[9]  = params[10];
+                    params_new_data[0] = params[1];
+                    params_new_data[1] = params[2];
+                    params_new_data[2] = params[3];
+                    params_new_data[3] = params[4];
+                    params_new_data[4] = params[5];
+                    params_new_data[5] = params[6];
+                    params_new_data[6] = params[7];
+                    params_new_data[7] = params[8];
+                    params_new_data[8] = params[9];
+                    params_new_data[9] = params[10];
                     params_new_data[10] = params[11];
                     params_new_data[11] = params[12];
                     params_new_data[12] = params[13];
@@ -379,7 +396,11 @@ public class YcObject {
                     params_new_data[48] = params[52];
                     params_new_data[49] = params[53];
                     params_new_data[50] = new Parameter("TIME", BaseTypes.TIMESTAMP,timestamp);
-                    params_new_data[51] = params[0];
+                    params_new_data[51] = params[55];
+                    params_new_data[52] = params[56];
+                    params_new_data[53] = params[57];
+                    params_new_data[54] = params[58];
+                    params_new_data[55] = params[0];
 
                     //气象数据
                     params_metero_data[0] = params[48];
@@ -392,6 +413,38 @@ public class YcObject {
                     params_metero_data[7] = params[45];
                     params_metero_data[8] = params[46];
                     params_metero_data[9] = params[47];
+
+                    /*
+                     * 获取当前时间+5分钟的时间，用于判断是否为当前小时、当天、当前月或者当前年的最后一条数据
+                     *  如果是，则将该条数据存入到数据库，时间以整点形式
+                     */
+                    Calendar calendar2 = Calendar.getInstance();
+                    calendar2.setTime(date);
+                    calendar2.add(Calendar.MINUTE, 5);
+                    int dealYearTime = calendar2.get(Calendar.YEAR);
+                    int dealMonthTime = calendar2.get(Calendar.MONTH) + 1;
+                    int dealDayTime = calendar2.get(Calendar.DATE);
+                    int dealHourTime = calendar2.get(Calendar.HOUR_OF_DAY);
+                    String dealTime = year + "-" + month + "-" + day + " 23:00:00";
+
+                    if ((year - dealYearTime) != 0){//当前年最后一条数据
+                        dataReportHandle(conn, dealTime);
+                    }else{
+                        if ((month - dealMonthTime) != 0){//当前月最后一条数据
+                            dataReportHandle(conn, dealTime);
+                        }else {
+                            if ((day - dealDayTime) != 0){//当天最后一条数据
+                                dataReportHandle(conn, dealTime);
+                            }else {
+                                if ((hour - dealHourTime) != 0){//当前小时最后一条数据
+                                    String dealTime2 = year + "-" + month + "-" + day + " " + hour + ":00:00";
+                                    dataReportHandle(conn, dealTime2);
+                                }else {
+                                    log.debug("同一小时内，无需存入报表中！");
+                                }
+                            }
+                        }
+                    }
 
                     try {
                         SqlHelper.executeNonQuery(conn, CommandType.Text, sql, params);
@@ -411,6 +464,31 @@ public class YcObject {
         };
         ScheduledExecutorService service  = Executors.newSingleThreadScheduledExecutor();
         service.scheduleAtFixedRate(runnable,120,300, TimeUnit.SECONDS);
+    }
+
+    public void dataReportHandle(DBConnection conn, String time){
+        //发电量报表
+        String report_sql = "INSERT INTO T_PVMANAGE_COLLECT_REPORT(INVERTER_ID,ELEC_PROD_HOUR,ELEC_PROD_DAILY,ELEC_PROD_MONTH,ELEC_PROD_YEAR," +
+                "ELEC_PROD_ALL,RADIANT_QUANTITY_1,RADIANT_QUANTITY_2,IRRADIANCE_1,IRRADIANCE_2,TIME) VALUES(?,?,?,?,?,?,?,?,?,?,?)";
+        Parameter[] report_data = new Parameter[11];
+        report_data[0] = new Parameter("INVERTER_ID", BaseTypes.VARCHAR,INVERTER_ID);
+        report_data[1] = new Parameter("ELEC_PROD_HOUR", BaseTypes.DECIMAL,new BigDecimal(ELEC_PROD_HOUR).setScale(2,BigDecimal.ROUND_HALF_UP).doubleValue());
+        report_data[2] = new Parameter("ELEC_PROD_DAILY", BaseTypes.DECIMAL,new BigDecimal(ELEC_PROD_DAILY).setScale(2,BigDecimal.ROUND_HALF_UP).doubleValue());
+        report_data[3] = new Parameter("ELEC_PROD_MONTH", BaseTypes.DECIMAL,new BigDecimal(ELEC_PROD_MONTH).setScale(2,BigDecimal.ROUND_HALF_UP).doubleValue());
+        report_data[4] = new Parameter("ELEC_PROD_YEAR", BaseTypes.DECIMAL,new BigDecimal(ELEC_PROD_YEAR).setScale(2,BigDecimal.ROUND_HALF_UP).doubleValue());
+        report_data[5] = new Parameter("ELEC_PROD_ALL", BaseTypes.DECIMAL,new BigDecimal(ELEC_PROD_ALL).setScale(2,BigDecimal.ROUND_HALF_UP).doubleValue());
+        report_data[6] = new Parameter("RADIANT_QUANTITY_1", BaseTypes.DECIMAL,new BigDecimal(RADIANT_QUANTITY_1).setScale(2,BigDecimal.ROUND_HALF_UP).doubleValue());
+        report_data[7] = new Parameter("RADIANT_QUANTITY_2", BaseTypes.DECIMAL,new BigDecimal(RADIANT_QUANTITY_2).setScale(2,BigDecimal.ROUND_HALF_UP).doubleValue());
+        report_data[8] = new Parameter("IRRADIANCE_1",BaseTypes.DECIMAL,new BigDecimal(IRRADIANCE_1).setScale(2,BigDecimal.ROUND_HALF_UP).doubleValue());
+        report_data[9] = new Parameter("IRRADIANCE_2",BaseTypes.DECIMAL,new BigDecimal(IRRADIANCE_1).setScale(2,BigDecimal.ROUND_HALF_UP).doubleValue());
+        report_data[10] = new Parameter("TIME", BaseTypes.TIMESTAMP, Timestamp.valueOf(time));
+
+        try {
+            //插入日、月、年报表数据
+            SqlHelper.executeNonQuery(conn, CommandType.Text, report_sql, report_data);
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
     }
 
     public void clear(){
@@ -601,7 +679,6 @@ public class YcObject {
         this.OUTPUT_P = OUTPUT_P;
         this.flag=true;
         this.sendRabbitMq("SERIAL","OUTPUT_P",new BigDecimal(OUTPUT_P).setScale(2,BigDecimal.ROUND_HALF_UP).doubleValue());
-
     }
 
     public double getCONNECT_P() {
@@ -632,7 +709,6 @@ public class YcObject {
         this.REACTIVE_P = REACTIVE_P;
         this.flag=true;
         this.sendRabbitMq("SERIAL","REACTIVE_P",new BigDecimal(REACTIVE_P).setScale(2,BigDecimal.ROUND_HALF_UP).doubleValue());
-
     }
 
     public double getPV1_U() {
@@ -662,6 +738,7 @@ public class YcObject {
     public void setPV2_U(double PV2_U) {
         this.PV2_U = PV2_U;
         this.flag=true;
+        this.sendRabbitMq("SERIAL","PV2_U",new BigDecimal(PV2_U).setScale(2,BigDecimal.ROUND_HALF_UP).doubleValue());
     }
 
     public double getPV2_I() {
@@ -671,6 +748,7 @@ public class YcObject {
     public void setPV2_I(double PV2_I) {
         this.PV2_I = PV2_I;
         this.flag=true;
+        this.sendRabbitMq("SERIAL","PV2_I",new BigDecimal(PV2_I).setScale(2,BigDecimal.ROUND_HALF_UP).doubleValue());
     }
 
     public double getPV3_U() {
@@ -680,6 +758,7 @@ public class YcObject {
     public void setPV3_U(double PV3_U) {
         this.PV3_U = PV3_U;
         this.flag=true;
+        this.sendRabbitMq("SERIAL","PV3_U",new BigDecimal(PV3_U).setScale(2,BigDecimal.ROUND_HALF_UP).doubleValue());
     }
 
     public double getPV3_I() {
@@ -689,6 +768,7 @@ public class YcObject {
     public void setPV3_I(double PV3_I) {
         this.PV3_I = PV3_I;
         this.flag=true;
+        this.sendRabbitMq("SERIAL","PV3_I",new BigDecimal(PV3_I).setScale(2,BigDecimal.ROUND_HALF_UP).doubleValue());
     }
 
     public double getPV4_U() {
@@ -698,6 +778,7 @@ public class YcObject {
     public void setPV4_U(double PV4_U) {
         this.PV4_U = PV4_U;
         this.flag=true;
+        this.sendRabbitMq("SERIAL","PV4_U",new BigDecimal(PV4_U).setScale(2,BigDecimal.ROUND_HALF_UP).doubleValue());
     }
 
     public double getPV4_I() {
@@ -707,6 +788,7 @@ public class YcObject {
     public void setPV4_I(double PV4_I) {
         this.PV4_I = PV4_I;
         this.flag=true;
+        this.sendRabbitMq("SERIAL","PV4_I",new BigDecimal(PV4_I).setScale(2,BigDecimal.ROUND_HALF_UP).doubleValue());
     }
 
     public double getPV5_U() {
@@ -716,6 +798,7 @@ public class YcObject {
     public void setPV5_U(double PV5_U) {
         this.PV5_U = PV5_U;
         this.flag=true;
+        this.sendRabbitMq("SERIAL","PV5_U",new BigDecimal(PV5_U).setScale(2,BigDecimal.ROUND_HALF_UP).doubleValue());
     }
 
     public double getPV5_I() {
@@ -725,6 +808,7 @@ public class YcObject {
     public void setPV5_I(double PV5_I) {
         this.PV5_I = PV5_I;
         this.flag=true;
+        this.sendRabbitMq("SERIAL","PV5_I",new BigDecimal(PV5_I).setScale(2,BigDecimal.ROUND_HALF_UP).doubleValue());
     }
 
     public double getPV6_U() {
@@ -734,6 +818,7 @@ public class YcObject {
     public void setPV6_U(double PV6_U) {
         this.PV6_U = PV6_U;
         this.flag=true;
+        this.sendRabbitMq("SERIAL","PV6_U",new BigDecimal(PV6_U).setScale(2,BigDecimal.ROUND_HALF_UP).doubleValue());
     }
 
     public double getPV6_I() {
@@ -743,6 +828,7 @@ public class YcObject {
     public void setPV6_I(double PV6_I) {
         this.PV6_I = PV6_I;
         this.flag=true;
+        this.sendRabbitMq("SERIAL","PV6_I",new BigDecimal(PV6_I).setScale(2,BigDecimal.ROUND_HALF_UP).doubleValue());
     }
 
     public double getPV7_U() {
@@ -752,6 +838,7 @@ public class YcObject {
     public void setPV7_U(double PV7_U) {
         this.PV7_U = PV7_U;
         this.flag=true;
+        this.sendRabbitMq("SERIAL","PV7_U",new BigDecimal(PV7_U).setScale(2,BigDecimal.ROUND_HALF_UP).doubleValue());
     }
 
     public double getPV7_I() {
@@ -761,6 +848,7 @@ public class YcObject {
     public void setPV7_I(double PV7_I) {
         this.PV7_I = PV7_I;
         this.flag=true;
+        this.sendRabbitMq("SERIAL","PV7_I",new BigDecimal(PV7_I).setScale(2,BigDecimal.ROUND_HALF_UP).doubleValue());
     }
 
     public double getPV8_U() {
@@ -770,6 +858,7 @@ public class YcObject {
     public void setPV8_U(double PV8_U) {
         this.PV8_U = PV8_U;
         this.flag=true;
+        this.sendRabbitMq("SERIAL","PV8_U",new BigDecimal(PV8_U).setScale(2,BigDecimal.ROUND_HALF_UP).doubleValue());
     }
 
     public double getPV8_I() {
@@ -779,6 +868,7 @@ public class YcObject {
     public void setPV8_I(double PV8_I) {
         this.PV8_I = PV8_I;
         this.flag=true;
+        this.sendRabbitMq("SERIAL","PV8_I",new BigDecimal(PV8_I).setScale(2,BigDecimal.ROUND_HALF_UP).doubleValue());
     }
 
     public double getAC_UA() {
@@ -868,7 +958,6 @@ public class YcObject {
         this.CONVERT_EFF = CONVERT_EFF;
         this.flag=true;
         this.sendRabbitMq("SERIAL","CONVERT_EFF",new BigDecimal(CONVERT_EFF).setScale(2,BigDecimal.ROUND_HALF_UP).doubleValue());
-
     }
 
     public double getCO2_CUTS() {
@@ -897,6 +986,7 @@ public class YcObject {
     public void setCONVERT_BENF(double CONVERT_BENF) {
         this.CONVERT_BENF = CONVERT_BENF;
         this.flag=true;
+        this.sendRabbitMq("SERIAL","CONVERT_BENF",new BigDecimal(CONVERT_BENF).setScale(2,BigDecimal.ROUND_HALF_UP).doubleValue());
     }
 
     public int getCONNECT_STATUS() {
@@ -1050,6 +1140,86 @@ public class YcObject {
     public void setFULL_HOURS_ALL(double FULL_HOURS_ALL) {
         this.FULL_HOURS_ALL = FULL_HOURS_ALL;
         this.flag=true;
+    }
+
+    public double getPOWER_FACTOR() {
+        return POWER_FACTOR;
+    }
+
+    public void setPOWER_FACTOR(double POWER_FACTOR) {
+        this.POWER_FACTOR = POWER_FACTOR;
+        this.flag = true;
+        this.sendRabbitMq("SERIAL","POWER_FACTOR",new BigDecimal(POWER_FACTOR).setScale(2,BigDecimal.ROUND_HALF_UP).doubleValue());
+    }
+
+    public double getAB_U() {
+        return AB_U;
+    }
+
+    public void setAB_U(double AB_U) {
+        this.AB_U = AB_U;
+        this.flag = true;
+        this.sendRabbitMq("SERIAL","AB_U",new BigDecimal(AB_U).setScale(2,BigDecimal.ROUND_HALF_UP).doubleValue());
+    }
+
+    public double getBC_U() {
+        return BC_U;
+    }
+
+    public void setBC_U(double BC_U) {
+        this.BC_U = BC_U;
+        this.flag = true;
+        this.sendRabbitMq("SERIAL","BC_U",new BigDecimal(BC_U).setScale(2,BigDecimal.ROUND_HALF_UP).doubleValue());
+    }
+
+    public double getCA_U() {
+        return CA_U;
+    }
+
+    public void setCA_U(double CA_U) {
+        this.CA_U = CA_U;
+        this.flag = true;
+        this.sendRabbitMq("SERIAL","CA_U",new BigDecimal(CA_U).setScale(2,BigDecimal.ROUND_HALF_UP).doubleValue());
+    }
+
+    public int getSWITCH_STATUS() {
+        return SWITCH_STATUS;
+    }
+
+    public void setSWITCH_STATUS(int SWITCH_STATUS) {
+        this.SWITCH_STATUS = SWITCH_STATUS;
+        this.flag = true;
+        this.sendRabbitMq("SERIAL","SWITCH_STATUS", SWITCH_STATUS);
+    }
+
+    public int getNO_U_PROTECT() {
+        return NO_U_PROTECT;
+    }
+
+    public void setNO_U_PROTECT(int NO_U_PROTECT) {
+        this.NO_U_PROTECT = NO_U_PROTECT;
+        this.flag = true;
+        this.sendRabbitMq("SERIAL","NO_U_PROTECT", NO_U_PROTECT);
+    }
+
+    public int getLOW_U_PROTECT() {
+        return LOW_U_PROTECT;
+    }
+
+    public void setLOW_U_PROTECT(int LOW_U_PROTECT) {
+        this.LOW_U_PROTECT = LOW_U_PROTECT;
+        this.flag = true;
+        this.sendRabbitMq("SERIAL","LOW_U_PROTECT", LOW_U_PROTECT);
+    }
+
+    public int getGD_EFF_PROTECT() {
+        return GD_EFF_PROTECT;
+    }
+
+    public void setGD_EFF_PROTECT(int GD_EFF_PROTECT) {
+        this.GD_EFF_PROTECT = GD_EFF_PROTECT;
+        this.flag = true;
+        this.sendRabbitMq("SERIAL","GD_EFF_PROTECT", GD_EFF_PROTECT);
     }
 
     public Connection getConn() throws IOException, TimeoutException {

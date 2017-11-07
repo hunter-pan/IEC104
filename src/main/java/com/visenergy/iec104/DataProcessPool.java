@@ -31,6 +31,7 @@ public class DataProcessPool {
             for (int i = 0; i< list.size();i++){
                 log.debug("创建逆变器" + list.get(i).get("SERIAL") + "遥信、遥测对象。");
                 ycPool.put((String) list.get(i).get("SERIAL"),new YcObject((String) list.get(i).get("INVERTER_ID"),(String) list.get(i).get("SERIAL")));
+                yxPool.put((String) list.get(i).get("SERIAL"),new YxObject((String) list.get(i).get("INVERTER_ID"),(String) list.get(i).get("BUILDING_ID"), (String) list.get(i).get("SERIAL")));
                 yxsPool.put((String) list.get(i).get("SERIAL"),new YxStatusObject((String) list.get(i).get("INVERTER_ID"),(String) list.get(i).get("SERIAL")));
             }
         } catch (Exception e) {

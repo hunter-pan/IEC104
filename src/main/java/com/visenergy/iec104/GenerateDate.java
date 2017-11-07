@@ -138,7 +138,7 @@ public class GenerateDate {
 
     public static String getMinuatesData1(){
         init();
-        StringBuffer sBuffer = new StringBuffer("68 EA 00 00 00 00 0D 1C 03 00 01 00");
+        StringBuffer sBuffer = new StringBuffer("68 F2 00 00 00 00 0D 1D 03 00 01 00");
 
         //风速等气象信息
         String RADIANT_QUANTITY_1 = "69 40 00";
@@ -255,6 +255,10 @@ public class GenerateDate {
         float connect_p_101 = (float) (Math.random()*30);
         log.info("NO101_CONNECT_P：" + NO101_CONNECT_P + "，connect_p_101：" + connect_p_101);
         sBuffer.append(" " + NO101_CONNECT_P).append(ChangeUtils.encode(connect_p_101) + "00");
+        String NO101_NO_U_PROTECT = ChangeUtils.encodeInfomationAddress(16430);
+        float no_u_protect_101 = (float) (Math.random() + 1);
+        log.info("NO101_NO_U_PROTECT：" + NO101_NO_U_PROTECT + "，no_u_protect_101：" + no_u_protect_101);
+        sBuffer.append(" " + NO101_NO_U_PROTECT).append(ChangeUtils.encode(no_u_protect_101) + "00");
 
         return sBuffer.toString();
     }

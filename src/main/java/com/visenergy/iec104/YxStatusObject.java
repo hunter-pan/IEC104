@@ -14,7 +14,6 @@ import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 
 import java.io.IOException;
-import java.math.BigDecimal;
 import java.sql.Timestamp;
 import java.util.Map;
 import java.util.concurrent.Executors;
@@ -84,7 +83,7 @@ public class YxStatusObject {
         };
         ScheduledExecutorService service = Executors.newSingleThreadScheduledExecutor();
         // 第二个参数为首次执行的延时时间，第三个参数为定时执行的间隔时间
-        service.scheduleAtFixedRate(runnable, 360, 360, TimeUnit.SECONDS);
+        service.scheduleAtFixedRate(runnable, 120, 300, TimeUnit.SECONDS);
     }
 
     public String getSERIAL() {

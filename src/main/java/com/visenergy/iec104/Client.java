@@ -7,7 +7,10 @@ import net.sf.json.JSONObject;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 
-import java.io.*;
+import java.io.DataInputStream;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.net.Socket;
@@ -198,8 +201,8 @@ public class Client {
 
                                     //遥信对象
                                     if (yxObjName != null) {
-                                        log.debug("遥信对象 ：" + yxObjName + " ,信息体地址：" + address + "，执行方法：set" + yxObjJson.getString("name") + "，值：" + ((IeSinglePointWithQuality) infoObjs[i].getInformationElements()[j][0]).isOn());
                                         int flagInt = ((IeSinglePointWithQuality) infoObjs[i].getInformationElements()[j][0]).isOn() ? 1 : 0;
+                                        log.debug("遥信对象 ：" + yxObjName + " ,信息体地址：" + address + "，执行方法：set" + yxObjJson.getString("name") + "，值：" + flagInt);
                                         setValue(1, yxObjName, "set" + yxObjJson.getString("name"), flagInt, yxObjJson.getString("type"));
                                     } else {
                                         log.warn("遥信对象无名称！");
@@ -254,7 +257,7 @@ public class Client {
                                         log.debug("遥测对象 ："+ ycObjName +" ,信息体地址："+ address +"，执行方法：set" + ycObjJson.getString("name") +"，值：" + ((IeShortFloat)infoObjs[i].getInformationElements()[j][0]).getValue());
                                         //往YcObject对象中的属性set值
 
-                                        //判断是否是遥信状态数据(并网、PV连接、警告状态)，是：将值set进遥信状态对象(YxStatusObject)对应的属性中
+                                        //判断是否是遥信状态数据(开关机、并网、闭锁、警告、零电压穿越保护、低电压穿越保护、孤岛效应保护状态)，是：将值set进遥信状态对象(YxStatusObject)对应的属性中
                                         if ("CONNECT_STATUS".equals(ycObjJson.getString("name"))){
                                             setValue(2,ycObjName,"set" + ycObjJson.getString("name"),(int)((IeShortFloat)infoObjs[i].getInformationElements()[j][0]).getValue(),ycObjJson.getString("type"));
                                             setValue(3,ycObjName,"set" + ycObjJson.getString("name"),(int)((IeShortFloat)infoObjs[i].getInformationElements()[j][0]).getValue(),ycObjJson.getString("type"));
@@ -264,6 +267,14 @@ public class Client {
                                         }else if("WARNING_STATUS".equals(ycObjJson.getString("name"))){
                                             setValue(2,ycObjName,"set" + ycObjJson.getString("name"),(int)((IeShortFloat)infoObjs[i].getInformationElements()[j][0]).getValue(),ycObjJson.getString("type"));
                                             setValue(3,ycObjName,"set" + ycObjJson.getString("name"),(int)((IeShortFloat)infoObjs[i].getInformationElements()[j][0]).getValue(),ycObjJson.getString("type"));
+                                        }else if("SWITCH_STATUS".equals(ycObjJson.getString("name"))){
+                                            setValue(2,ycObjName,"set" + ycObjJson.getString("name"),(int)((IeShortFloat)infoObjs[i].getInformationElements()[j][0]).getValue(),ycObjJson.getString("type"));
+                                        }else if("NO_U_PROTECT".equals(ycObjJson.getString("name"))){
+                                            setValue(2,ycObjName,"set" + ycObjJson.getString("name"),(int)((IeShortFloat)infoObjs[i].getInformationElements()[j][0]).getValue(),ycObjJson.getString("type"));
+                                        }else if("LOW_U_PROTECT".equals(ycObjJson.getString("name"))){
+                                            setValue(2,ycObjName,"set" + ycObjJson.getString("name"),(int)((IeShortFloat)infoObjs[i].getInformationElements()[j][0]).getValue(),ycObjJson.getString("type"));
+                                        }else if("GD_EFF_PROTECT".equals(ycObjJson.getString("name"))){
+                                            setValue(2,ycObjName,"set" + ycObjJson.getString("name"),(int)((IeShortFloat)infoObjs[i].getInformationElements()[j][0]).getValue(),ycObjJson.getString("type"));
                                         }else {
                                             setValue(2,ycObjName,"set" + ycObjJson.getString("name"),((IeShortFloat)infoObjs[i].getInformationElements()[j][0]).getValue(),ycObjJson.getString("type"));
                                         }
