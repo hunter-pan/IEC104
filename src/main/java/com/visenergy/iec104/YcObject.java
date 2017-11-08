@@ -480,7 +480,7 @@ public class YcObject {
         report_data[6] = new Parameter("RADIANT_QUANTITY_1", BaseTypes.DECIMAL,new BigDecimal(RADIANT_QUANTITY_1).setScale(2,BigDecimal.ROUND_HALF_UP).doubleValue());
         report_data[7] = new Parameter("RADIANT_QUANTITY_2", BaseTypes.DECIMAL,new BigDecimal(RADIANT_QUANTITY_2).setScale(2,BigDecimal.ROUND_HALF_UP).doubleValue());
         report_data[8] = new Parameter("IRRADIANCE_1",BaseTypes.DECIMAL,new BigDecimal(IRRADIANCE_1).setScale(2,BigDecimal.ROUND_HALF_UP).doubleValue());
-        report_data[9] = new Parameter("IRRADIANCE_2",BaseTypes.DECIMAL,new BigDecimal(IRRADIANCE_1).setScale(2,BigDecimal.ROUND_HALF_UP).doubleValue());
+        report_data[9] = new Parameter("IRRADIANCE_2",BaseTypes.DECIMAL,new BigDecimal(IRRADIANCE_2).setScale(2,BigDecimal.ROUND_HALF_UP).doubleValue());
         report_data[10] = new Parameter("TIME", BaseTypes.TIMESTAMP, Timestamp.valueOf(time));
 
         try {
