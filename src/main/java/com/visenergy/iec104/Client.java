@@ -112,7 +112,7 @@ public class Client extends Thread {
                         e.printStackTrace();
                     }
                     log.info("重新连接");
-                    socket = new Socket("192.168.100.193", 2405);
+                    socket = new Socket("192.168.100.110", 2405);
                     close = !sendMe("2");
                 } catch (IOException e) {
                     log.info("创建连接失败");
@@ -154,7 +154,7 @@ public class Client extends Thread {
             //系统初始化
             Init.start();
             // 向本机的4700端口发出客户请求
-            socket = new Socket("192.168.100.193", 2405);
+            socket = new Socket("192.168.100.110", 2405);
             log.debug("与192.168.100.110建立连接");
             Client client = new Client();
             client.start();
