@@ -28,7 +28,7 @@
         <dependency>
             <groupId>com.flying</groupId>
             <artifactId>vis-jdbc</artifactId>
-            <version>1.0-SNAPSHOT</version>
+            <version>1.1</version>
         </dependency>
         <dependency>
             <groupId>mysql</groupId>
