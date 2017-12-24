@@ -201,7 +201,6 @@ public class YxObject {
     public void setSYSTEM_FAIL(int SYSTEM_FAIL) {
         this.SYSTEM_FAIL = SYSTEM_FAIL;
         this.flag = true;
-        System.out.println("SYSTEM_FAIL = " + this.SYSTEM_FAIL);
         this.sendRabbitMq("SERIAL","SYSTEM_FAIL", SYSTEM_FAIL);
     }
 
