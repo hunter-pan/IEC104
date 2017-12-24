@@ -16,137 +16,8 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 
-public class Client extends Thread {
+public class Client {
     private static Log log = LogFactory.getLog(Client.class);
-    private static Socket socket;
-    private static boolean close = false;
-
-    @Override
-    public void run() {
-        while (true) {
-            //判断服务器端是否关闭
-            close = isServerClose(socket);
-            if (!close) {
-                try {
-                    // 由Socket对象得到输出流，并构造PrintWriter对象
-                    OutputStream os = socket.getOutputStream();
-
-                    Runnable runnable = new Runnable() {
-                        public void run() {
-                            try {
-                                log.debug("发送总召命令");
-                                os.write(ChangeUtils.hexStringToBytes("680E0000000064010600010000000014"));
-                            } catch (Exception e) {
-                                e.printStackTrace();
-                            }
-                        }
-                    };
-                    ScheduledExecutorService service = Executors.newSingleThreadScheduledExecutor();
-                    // 第二个参数为首次执行的延时时间，第三个参数为定时执行的间隔时间
-                    service.scheduleAtFixedRate(runnable, 60, 180, TimeUnit.SECONDS);
-
-                    Connection conn = RabbitMqUtils.newConnection();
-                    Channel channel = conn.createChannel();
-                    //监听总召命令
-                    Consumer consumer = new DefaultConsumer(channel) {
-                        @Override
-                        public void handleDelivery(String consumerTag, Envelope envelope, AMQP.BasicProperties properties, byte[] body) throws IOException {
-                            log.debug("有新客户端连接，发送总召命令");
-                            os.write(ChangeUtils.hexStringToBytes("680E0000000064010600010000000014"));
-                        }
-                    };
-                    channel.basicConsume("PV_CALL", true, consumer);
-
-                    // 由Socket对象得到输入流，并构造相应的BufferedReader对象
-                    InputStream is = socket.getInputStream();
-
-                    while (true) {
-                        try {
-                            if (isServerClose(socket))
-                                break;
-                            Apdu apdu = new Apdu(new DataInputStream(is));
-                            if (apdu.getApciType() == Apdu.ApciType.I_FORMAT) {
-                                Asdu asdu = apdu.getAsdu();
-                                //处理I命令
-                                handleData(asdu.getTypeId(), asdu.getInformationObjects());
-                                //返回S确认命令
-                                int receiveSeqNum = apdu.getSendSeqNumber() + 1;
-                                byte[] recNum = new byte[2];
-                                recNum[0] = (byte) (receiveSeqNum << 1);
-                                recNum[1] = (byte) (receiveSeqNum >> 7);
-                                String recStr = ChangeUtils.toHexString(recNum);
-                                os.write(ChangeUtils.hexStringToBytes("68040100" + recStr));
-                                log.debug("确认消息，S类型，下一条的接受序号：" + recStr);
-                            } else if (apdu.getApciType() == Apdu.ApciType.STARTDT_ACT) {
-                                os.write(ChangeUtils.hexStringToBytes("68040B000000"));
-                                log.debug("确认启动消息，U类型");
-                            } else if (apdu.getApciType() == Apdu.ApciType.STOPDT_ACT) {
-                                os.write(ChangeUtils.hexStringToBytes("680423000000"));
-                                log.debug("确认停止消息，U类型");
-                            } else if (apdu.getApciType() == Apdu.ApciType.TESTFR_ACT) {
-                                os.write(ChangeUtils.hexStringToBytes("680483000000"));
-                                log.debug("确认测试消息，U类型");
-                            } else {
-                                log.warn("未知的报文：" + apdu.getApciType());
-                            }
-                        } catch (Exception e) {
-                            log.error("异常错误", e);
-                            break;
-                        }
-                    }
-                    os.close(); // 关闭Socket输出流
-
-                    is.close(); // 关闭Socket输入流
-
-                    socket.close(); // 关闭Socket
-                } catch (Exception e) {
-                    e.printStackTrace();
-                }
-            }
-
-            while (close) {
-                try {
-                    try {
-                        Thread.sleep(60 * 1000L);
-                    } catch (InterruptedException e) {
-                        e.printStackTrace();
-                    }
-                    log.info("重新连接");
-                    socket = new Socket("192.168.100.110", 2405);
-                    close = !sendMe("2");
-                } catch (IOException e) {
-                    log.info("创建连接失败");
-                    close = true;
-                }
-            }
-        }
-    }
-
-    public Boolean sendMe(String message) {
-        try {
-            PrintWriter out = new PrintWriter(socket.getOutputStream(), true);
-            out.println(message);
-            return true;
-        } catch (Exception se) {
-            log.error("往服务器端发送数据失败", se);
-            return false;
-        }
-    }
-
-    /**
-     * 判断是否断开连接，断开返回true,没有返回false
-     *
-     * @param socket
-     * @return
-     */
-    public Boolean isServerClose(Socket socket) {
-        try {
-            socket.sendUrgentData(0);//发送1个字节的紧急数据，默认情况下，服务器端没有开启紧急数据处理，不影响正常通信
-            return false;
-        } catch (Exception se) {
-            return true;
-        }
-    }
 
     public static void main(String args[]) {
 
@@ -154,12 +25,80 @@ public class Client extends Thread {
             //系统初始化
             Init.start();
             // 向本机的4700端口发出客户请求
-            socket = new Socket("192.168.100.110", 2405);
+            Socket socket = new Socket("192.168.100.110", 2405);
             log.debug("与192.168.100.110建立连接");
-            Client client = new Client();
-            client.start();
+            // 由Socket对象得到输出流，并构造PrintWriter对象
+            OutputStream os = socket.getOutputStream();
+
+            Runnable runnable = new Runnable() {
+                public void run() {
+                    try {
+                        log.debug("发送总召命令");
+                        os.write(ChangeUtils.hexStringToBytes("680E0000000064010600010000000014"));
+                    } catch (Exception e) {
+                        e.printStackTrace();
+                    }
+                }
+            };
+            ScheduledExecutorService service = Executors.newSingleThreadScheduledExecutor();
+            // 第二个参数为首次执行的延时时间，第三个参数为定时执行的间隔时间
+            service.scheduleAtFixedRate(runnable, 60, 180, TimeUnit.SECONDS);
+
+            Connection conn = RabbitMqUtils.newConnection();
+            Channel channel = conn.createChannel();
+            //监听总召命令
+            Consumer consumer = new DefaultConsumer(channel){
+                @Override
+                public void handleDelivery(String consumerTag, Envelope envelope, AMQP.BasicProperties properties, byte[] body) throws IOException {
+                    log.debug("有新客户端连接，发送总召命令");
+                    os.write(ChangeUtils.hexStringToBytes("680E0000000064010600010000000014"));
+                }
+            };
+            channel.basicConsume("PV_CALL",true,consumer);
+
+            // 由Socket对象得到输入流，并构造相应的BufferedReader对象
+            InputStream is = socket.getInputStream();
+
+            while(true){
+                try {
+                    Apdu apdu = new Apdu(new DataInputStream(is));
+                    if (apdu.getApciType() == Apdu.ApciType.I_FORMAT) {
+                        Asdu asdu = apdu.getAsdu();
+                        //处理I命令
+                        handleData(asdu.getTypeId(),asdu.getInformationObjects());
+                        //返回S确认命令
+                        int receiveSeqNum = apdu.getSendSeqNumber() + 1;
+                        byte[] recNum = new byte[2];
+                        recNum[0] = (byte) (receiveSeqNum << 1);
+                        recNum[1] = (byte) (receiveSeqNum >> 7);
+                        String recStr = ChangeUtils.toHexString(recNum);
+                        os.write(ChangeUtils.hexStringToBytes("68040100" + recStr));
+                        log.debug("确认消息，S类型，下一条的接受序号：" + recStr);
+                    }else if (apdu.getApciType() == Apdu.ApciType.STARTDT_ACT) {
+                        os.write(ChangeUtils.hexStringToBytes("68040B000000"));
+                        log.debug("确认启动消息，U类型");
+                    }else if (apdu.getApciType() == Apdu.ApciType.STOPDT_ACT) {
+                        os.write(ChangeUtils.hexStringToBytes("680423000000"));
+                        log.debug("确认停止消息，U类型");
+                    }else if (apdu.getApciType() == Apdu.ApciType.TESTFR_ACT) {
+                        os.write(ChangeUtils.hexStringToBytes("680483000000"));
+                        log.debug("确认测试消息，U类型");
+                    }else{
+                        log.warn("未知的报文：" + apdu.getApciType());
+                    }
+                }catch (Exception e){
+                    log.error("异常错误",e);
+                    break;
+                }
+            }
+            os.close(); // 关闭Socket输出流
+
+            is.close(); // 关闭Socket输入流
+
+            socket.close(); // 关闭Socket
+
         } catch (Exception e) {
-            log.error("Error", e); // 出错，则打印出错信息
+            log.error("Error",e); // 出错，则打印出错信息
         }
     }
 
@@ -357,6 +296,7 @@ public class Client extends Thread {
     }
 
     /**
+     *
      * @param typeObj
      * @param ycSerial
      * @param methodName
@@ -365,20 +305,21 @@ public class Client extends Thread {
      * @throws InvocationTargetException
      * @throws IllegalAccessException
      */
-    public static void setValue(int typeObj, String ycSerial, String methodName, Object methodValue, String mt) throws NoSuchMethodException, InvocationTargetException, IllegalAccessException {
+    public static void setValue(int typeObj,String ycSerial,String methodName,Object methodValue,String mt) throws NoSuchMethodException, InvocationTargetException, IllegalAccessException {
         Object obj = null;
-        if (typeObj == 1) {
+        if (typeObj == 1){
             obj = DataProcessPool.yxPool.get(ycSerial);
-        } else if (typeObj == 2) {
+        }else if(typeObj == 2){
             obj = DataProcessPool.ycPool.get(ycSerial);
-        } else {
+        }else{
             obj = DataProcessPool.yxsPool.get(ycSerial);
         }
         //执行反射方法
-        setByReflect(obj, methodName, methodValue, mt);
+        setByReflect(obj,methodName,methodValue,mt);
     }
 
     /**
+     *
      * @param obj
      * @param methodName
      * @param methodValue
@@ -386,25 +327,25 @@ public class Client extends Thread {
      * @throws InvocationTargetException
      * @throws IllegalAccessException
      */
-    public static void setByReflect(Object obj, String methodName, Object methodValue, String mt) throws NoSuchMethodException, InvocationTargetException, IllegalAccessException {
+    public static void setByReflect(Object obj,String methodName,Object methodValue,String mt) throws NoSuchMethodException, InvocationTargetException, IllegalAccessException {
         Method objMethod = null;
-        if (!"set".equals(methodName)) {
-            if ("DECIMAL".equals(mt)) {
-                objMethod = obj.getClass().getMethod(methodName, double.class);
-            } else if ("int".equals(mt)) {
-                objMethod = obj.getClass().getMethod(methodName, int.class);
-            } else if ("String".equals(mt)) {
-                objMethod = obj.getClass().getMethod(methodName, String.class);
-            } else {
+        if (!"set".equals(methodName)){
+            if("DECIMAL".equals(mt)){
+                objMethod = obj.getClass().getMethod(methodName,double.class);
+            }else if("int".equals(mt)){
+                objMethod = obj.getClass().getMethod(methodName,int.class);
+            }else if("String".equals(mt)){
+                objMethod = obj.getClass().getMethod(methodName,String.class);
+            }else{
                 log.warn("不存在的方法类型，无法生成反射方法。");
             }
-        } else {
+        }else {
             log.warn("YcObject对象中不存在该set方法");
         }
 
-        if (objMethod != null) {
-            objMethod.invoke(obj, methodValue);
-        } else {
+        if(objMethod != null){
+            objMethod.invoke(obj,methodValue);
+        }else{
             log.warn("反射方法不存在");
         }
     }

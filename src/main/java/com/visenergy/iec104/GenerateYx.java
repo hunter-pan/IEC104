@@ -20,9 +20,9 @@ public class GenerateYx {
         String NO101_SYSTEM_FAIL = ChangeUtils.encodeInfomationAddress(3);
         log.info("NO101_SYSTEM_FAIL：" + NO101_SYSTEM_FAIL);
         sBuffer.append(" " + NO101_SYSTEM_FAIL).append("00");
-        String NO101_NBI_EXP_FAIL = ChangeUtils.encodeInfomationAddress(6);
-        log.info("NO101_NBI_EXP_FAIL：" + NO101_NBI_EXP_FAIL);
-        sBuffer.append(" " + NO101_NBI_EXP_FAIL).append("01");
+        String NO101_WDGG_FAIL = ChangeUtils.encodeInfomationAddress(8);
+        log.info("NO101_WDGG_FAIL：" + NO101_WDGG_FAIL);
+        sBuffer.append(" " + NO101_WDGG_FAIL).append("01");
 
         return sBuffer.toString();
     }

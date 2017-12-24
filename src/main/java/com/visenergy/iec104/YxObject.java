@@ -14,10 +14,9 @@ import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 
 import java.io.IOException;
-import java.lang.reflect.Field;
 import java.sql.Timestamp;
-import java.util.Map;
-import java.util.UUID;
+import java.text.SimpleDateFormat;
+import java.util.*;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
@@ -66,76 +65,82 @@ public class YxObject {
             log.error("初始化rabbitMq失败",e);
         }
 
+        String sql =  "INSERT INTO T_PVMANAGE_INVERTER_FAILURE(FA_ID,FA_NAME,BUILDING_ID,DEVICE_SERIAL,TIME) " +
+                "VALUES(?,?,?,?,?)";
+
         Runnable runnable = new Runnable() {
 
             public void run() {
                 if(flag == true){
-                    String sql =  "INSERT INTO T_PVMANAGE_INVERTER_FAILURE(FA_ID,FA_NAME,BUILDING_ID,INVERTER_ID,TIME) " +
-                            "VALUES(?,?,?,?,?)";
 
+                    boolean existFailure = false;
                     DBConnection conn = SqlHelper.connPool.getConnection();
 
-                    YxObject yxTable = new YxObject();
-                    Class yx = (Class) yxTable.getClass();
-                    Field[] fields = yx.getDeclaredFields();
-                    String failureDescription = null;
-
-                    for (int i = 0; i < fields.length ; i++) {
-                        Field f = fields[i];
-                        Object val;
-                        String name = null;
-                        f.setAccessible(true); //设置些属性是可以访问的
-                        try {
-                            name = f.getName();
-                            val = f.get(yxTable);//得到此属性的值
-                            if ("VERSION_FAIL".equals(name)){
-                                failureDescription = "软件版本不匹配";
-                            }else if ("SYSTEM_FAIL".equals(name)){
-                                failureDescription = "系统故障";
-                            }else if ("NBI_EXP_FAIL".equals(name)){
-                                failureDescription = "逆变电流异常";
-                            }else if ("CYI_FAIL".equals(name)){
-                                failureDescription = "残余电流异常";
-                            }else if ("WDGG_FAIL".equals(name)){
-                                failureDescription = "温度过高";
-                            }else if ("FS_FAIL".equals(name)){
-                                failureDescription = "风扇故障";
-                            }else if ("SPI_FAIL".equals(name)){
-                                failureDescription = "SPI通讯异常";
-                            }else if ("JYZKD_FAIL".equals(name)){
-                                failureDescription = "绝缘阻抗低";
-                            }else if ("AFCI_FAIL".equals(name)){
-                                failureDescription = "AFCI自检失败";
-                            }else if ("ZLDH_FAIL".equals(name)){
-                                failureDescription = "直流电弧故障";
-                            }else if ("ZC3_FAIL".equals(name)){
-                                failureDescription = "组串3反向";
-                            }else if ("LYBHQ_FAIL".equals(name)){
-                                failureDescription = "浪涌保护器故障";
-                            }else{
-                                log.debug("遥信对象里的其他属性：" + name);
-                            }
-
-                            if (val != null){
-                                if("0".equals(val.toString()) && failureDescription != null){
-                                    Parameter[] params = new Parameter[5];
-
-                                    String id = UUID.randomUUID().toString().replaceAll("-", "").toUpperCase();
-                                    params[0] = new Parameter("ID", BaseTypes.VARCHAR,id);
-                                    params[1] = new Parameter("FA_NAME", BaseTypes.VARCHAR,failureDescription);
-                                    params[2] = new Parameter("BUILDING_ID", BaseTypes.VARCHAR,BUILDING_ID);
-                                    params[3] = new Parameter("INVERTER_ID", BaseTypes.VARCHAR,INVERTER_ID);
-                                    params[4] = new Parameter("TIME", BaseTypes.TIMESTAMP, new Timestamp(System.currentTimeMillis()));
-                                    SqlHelper.executeNonQuery(conn, CommandType.Text, sql, params);
-                                    log.debug("插入遥信故障信息到表中," + failureDescription);
-                                }else {
-                                    log.debug("遥信信息：" + failureDescription + "：false");
-                                }
-                            }
-                        }catch (Exception e){
-                            e.printStackTrace();
-                        }
+                    List<Parameter[]> dataList = new ArrayList<Parameter[]>();
+                    if (VERSION_FAIL == 1) {
+                        dataList.add(setParameter("软件版本不匹配"));
+                        existFailure = true;
                     }
+
+                    if (CYI_FAIL == 1) {
+                        dataList.add(setParameter("残余电流异常"));
+                        existFailure = true;
+                    }
+
+                    if (WDGG_FAIL == 1) {
+                        dataList.add(setParameter("温度过高"));
+                        existFailure = true;
+                    }
+
+                    if (FS_FAIL == 1) {
+                        dataList.add(setParameter("风扇故障"));
+                        existFailure = true;
+                    }
+
+                    if (SPI_FAIL == 1) {
+                        dataList.add(setParameter("SPI通讯异常"));
+                        existFailure = true;
+                    }
+
+                    if (JYZKD_FAIL == 1) {
+                        dataList.add(setParameter("绝缘阻抗低"));
+                        existFailure = true;
+                    }
+
+                    if (AFCI_FAIL == 1) {
+                        dataList.add(setParameter("AFCI自检失败"));
+                        existFailure = true;
+                    }
+
+                    if (ZLDH_FAIL == 1) {
+                        dataList.add(setParameter("直流电弧故障"));
+                        existFailure = true;
+                    }
+
+                    if (LYBHQ_FAIL == 1) {
+                        dataList.add(setParameter("浪涌保护器故障"));
+                        existFailure = true;
+                    }
+
+                    if (existFailure) {
+                        try {
+                            SqlHelper.executeBatchInsert(conn, CommandType.Text, sql, dataList);
+                            log.debug("插入遥信告警数据到数据库！");
+                            //使用rabbitmq发送故障消息
+                            SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd HH:mm");
+                            Map mapWarning = new HashMap();
+                            mapWarning.put("DEVICE_SERIAL", SERIAL);
+                            mapWarning.put("FA_NAME", "遥信数据有新告警");
+                            mapWarning.put("FA_TYPE", "PV");
+                            mapWarning.put("TIME", sdf.format(new Date()));
+                            sendRabbitMq("lightTopology", "topologyData", mapWarning);
+                        } catch (Exception e) {
+                            log.error("遥信告警数据存储到数据库时出错！");
+                        }
+                    } else {
+                        log.debug("遥信数据，无告警信息！");
+                    }
+
                     clear();
                     SqlHelper.connPool.releaseConnection(conn);
 
@@ -148,22 +153,10 @@ public class YxObject {
         };
         ScheduledExecutorService service = Executors.newSingleThreadScheduledExecutor();
         // 第二个参数为首次执行的延时时间，第三个参数为定时执行的间隔时间
-        service.scheduleAtFixedRate(runnable, 20, 30, TimeUnit.SECONDS);
+        service.scheduleAtFixedRate(runnable, 10, 10, TimeUnit.SECONDS);
     }
 
     public void clear(){
-        /*VERSION_FAIL=-1;
-        SYSTEM_FAIL=-1;
-        NBI_EXP_FAIL=-1;
-        CYI_FAIL=-1;
-        WDGG_FAIL=-1;
-        FS_FAIL=-1;
-        SPI_FAIL=-1;
-        JYZKD_FAIL=-1;
-        AFCI_FAIL=-1;
-        ZLDH_FAIL=-1;
-        ZC3_FAIL=-1;
-        LYBHQ_FAIL=-1;*/
         this.flag = false;
     }
 
@@ -208,6 +201,7 @@ public class YxObject {
     public void setSYSTEM_FAIL(int SYSTEM_FAIL) {
         this.SYSTEM_FAIL = SYSTEM_FAIL;
         this.flag = true;
+        System.out.println("SYSTEM_FAIL = " + this.SYSTEM_FAIL);
         this.sendRabbitMq("SERIAL","SYSTEM_FAIL", SYSTEM_FAIL);
     }
 
@@ -325,6 +319,7 @@ public class YxObject {
         return channel;
     }
 
+
     public void sendRabbitMq(String ID,String name,Object value){
         Map map = new HashedMap();
         map.put("name",ID);
@@ -347,5 +342,21 @@ public class YxObject {
         } catch (TimeoutException e) {
             log.error("RabbitMq传输消息失败",e);
         }
+    }
+
+    /**
+     * 设置Parameter
+     * @param failName
+     * @return
+     */
+    public Parameter[] setParameter(String failName) {
+        Parameter[] params = new Parameter[5];
+        String id = UUID.randomUUID().toString().replaceAll("-", "").toUpperCase();
+        params[0] = new Parameter("FA_ID", BaseTypes.VARCHAR, id);
+        params[1] = new Parameter("FA_NAME", BaseTypes.VARCHAR, failName);
+        params[2] = new Parameter("BUILDING_ID", BaseTypes.VARCHAR, BUILDING_ID);
+        params[3] = new Parameter("DEVICE_SERIAL", BaseTypes.VARCHAR, INVERTER_ID);
+        params[4] = new Parameter("TIME", BaseTypes.TIMESTAMP, new Timestamp(System.currentTimeMillis()));
+        return params;
     }
 }
