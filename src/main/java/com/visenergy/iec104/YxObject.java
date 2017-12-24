@@ -77,10 +77,6 @@ public class YxObject {
                     DBConnection conn = SqlHelper.connPool.getConnection();
 
                     List<Parameter[]> dataList = new ArrayList<Parameter[]>();
-                    if (VERSION_FAIL == 1) {
-                        dataList.add(setParameter("软件版本不匹配"));
-                        existFailure = true;
-                    }
 
                     if (CYI_FAIL == 1) {
                         dataList.add(setParameter("残余电流异常"));
@@ -354,7 +350,7 @@ public class YxObject {
         params[0] = new Parameter("FA_ID", BaseTypes.VARCHAR, id);
         params[1] = new Parameter("FA_NAME", BaseTypes.VARCHAR, failName);
         params[2] = new Parameter("BUILDING_ID", BaseTypes.VARCHAR, BUILDING_ID);
-        params[3] = new Parameter("DEVICE_SERIAL", BaseTypes.VARCHAR, INVERTER_ID);
+        params[3] = new Parameter("DEVICE_SERIAL", BaseTypes.VARCHAR, SERIAL);
         params[4] = new Parameter("TIME", BaseTypes.TIMESTAMP, new Timestamp(System.currentTimeMillis()));
         return params;
     }
