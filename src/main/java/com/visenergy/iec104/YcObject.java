@@ -95,6 +95,8 @@ public class YcObject {
     private int GD_EFF_PROTECT = 0;            //孤岛效应保护
     private boolean flag=false;
     Map timeMap = new HashMap();               //存放上一次时间
+    Map elecProdAllMap = new HashMap();        //存放上一次累计发电量
+    Map elecProdDailyMap = new HashMap();      //存放上一次日发电量
 
     private Connection conn = null;
     private Channel channel = null;
@@ -414,44 +416,52 @@ public class YcObject {
                     params_metero_data[8] = params[46];
                     params_metero_data[9] = params[47];
 
-                    /*
-                     * 获取当前时间+5分钟的时间，用于判断是否为当前小时、当天、当前月或者当前年的最后一条数据
-                     *  如果是，则将该条数据存入到数据库，时间以整点形式
-                     */
-                    Calendar calendar2 = Calendar.getInstance();
-                    calendar2.setTime(date);
-                    calendar2.add(Calendar.MINUTE, 5);
-                    int dealYearTime = calendar2.get(Calendar.YEAR);
-                    int dealMonthTime = calendar2.get(Calendar.MONTH) + 1;
-                    int dealDayTime = calendar2.get(Calendar.DATE);
-                    int dealHourTime = calendar2.get(Calendar.HOUR_OF_DAY);
-                    String dealTime = year + "-" + month + "-" + day + " 23:00:00";
-
-                    if ((year - dealYearTime) != 0){//当前年最后一条数据
-                        dataReportHandle(conn, dealTime);
-                    }else{
-                        if ((month - dealMonthTime) != 0){//当前月最后一条数据
-                            dataReportHandle(conn, dealTime);
-                        }else {
-                            if ((day - dealDayTime) != 0){//当天最后一条数据
-                                dataReportHandle(conn, dealTime);
-                            }else {
-                                if ((hour - dealHourTime) != 0){//当前小时最后一条数据
-                                    String dealTime2 = year + "-" + month + "-" + day + " " + hour + ":00:00";
-                                    dataReportHandle(conn, dealTime2);
-                                }else {
-                                    log.debug("同一小时内，无需存入报表中！");
-                                }
-                            }
-                        }
-                    }
-
                     try {
-                        SqlHelper.executeNonQuery(conn, CommandType.Text, sql, params);
+                        //初次直接执行插入，或者elecProdAllMap中有数据，并且五分钟的总发电量数据相隔在10度以内时，执行插入操作
+                        if ((elecProdAllMap.size() != 0 && Math.abs(ELEC_PROD_ALL -
+                                Double.parseDouble(elecProdAllMap.get("ELEC_PROD_ALL").toString())) <= 10) || (elecProdAllMap.size() == 0)) {
+                            elecProdAllMap.put("ELEC_PROD_ALL", ELEC_PROD_ALL);
+                            elecProdDailyMap.put("ELEC_PROD_DAILY", ELEC_PROD_DAILY);
+                            SqlHelper.executeNonQuery(conn, CommandType.Text, sql, params);
+                        } else {
+                            log.info("五分钟的发电量数据超过10度，数据有误，不执行插入操作！");
+                        }
                         //将最新数据更新到逆变器实时数据表
                         SqlHelper.executeNonQuery(conn, CommandType.Text, inverter_data_now, params_new_data);
                         //插入环境仪采集数据
                         SqlHelper.executeNonQuery(conn, CommandType.Text, metero_sql, params_metero_data);
+
+                        /*
+                         * 获取当前时间+5分钟的时间，用于判断是否为当前小时、当天、当前月或者当前年的最后一条数据
+                         *  如果是，则将该条数据存入到数据库，时间以整点形式
+                         */
+                        Calendar calendar2 = Calendar.getInstance();
+                        calendar2.setTime(date);
+                        calendar2.add(Calendar.MINUTE, 5);
+                        int dealYearTime = calendar2.get(Calendar.YEAR);
+                        int dealMonthTime = calendar2.get(Calendar.MONTH) + 1;
+                        int dealDayTime = calendar2.get(Calendar.DATE);
+                        int dealHourTime = calendar2.get(Calendar.HOUR_OF_DAY);
+                        String dealTime = year + "-" + month + "-" + day + " 23:00:00";
+
+                        if ((year - dealYearTime) != 0) {//当前年最后一条数据
+                            dataReportHandle(conn, dealTime);
+                        } else {
+                            if ((month - dealMonthTime) != 0) {//当前月最后一条数据
+                                dataReportHandle(conn, dealTime);
+                            } else {
+                                if ((day - dealDayTime) != 0) {//当天最后一条数据
+                                    dataReportHandle(conn, dealTime);
+                                } else {
+                                    if ((hour - dealHourTime) != 0) {//当前小时最后一条数据
+                                        String dealTime2 = year + "-" + month + "-" + day + " " + hour + ":00:00";
+                                        dataReportHandle(conn, dealTime2);
+                                    } else {
+                                        log.debug("同一小时内，无需存入报表中！");
+                                    }
+                                }
+                            }
+                        }
 //                        clear();
                     } catch (Exception e) {
                         e.printStackTrace();
@@ -467,16 +477,23 @@ public class YcObject {
     }
 
     public void dataReportHandle(DBConnection conn, String time){
+        double elecAll = ELEC_PROD_ALL;
+        double elecDaily = ELEC_PROD_DAILY;
+        if ((elecProdAllMap.size() != 0 && Math.abs(ELEC_PROD_ALL -
+                Double.parseDouble(elecProdAllMap.get("ELEC_PROD_ALL").toString())) > 10)) {
+            elecAll = Double.parseDouble(elecProdAllMap.get("ELEC_PROD_ALL").toString());
+            elecDaily = Double.parseDouble(elecProdDailyMap.get("ELEC_PROD_DAILY").toString());
+        }
         //发电量报表
         String report_sql = "INSERT INTO T_PVMANAGE_COLLECT_REPORT(INVERTER_ID,ELEC_PROD_HOUR,ELEC_PROD_DAILY,ELEC_PROD_MONTH,ELEC_PROD_YEAR," +
                 "ELEC_PROD_ALL,RADIANT_QUANTITY_1,RADIANT_QUANTITY_2,IRRADIANCE_1,IRRADIANCE_2,TIME) VALUES(?,?,?,?,?,?,?,?,?,?,?)";
         Parameter[] report_data = new Parameter[11];
         report_data[0] = new Parameter("INVERTER_ID", BaseTypes.VARCHAR,INVERTER_ID);
         report_data[1] = new Parameter("ELEC_PROD_HOUR", BaseTypes.DECIMAL,new BigDecimal(ELEC_PROD_HOUR).setScale(2,BigDecimal.ROUND_HALF_UP).doubleValue());
-        report_data[2] = new Parameter("ELEC_PROD_DAILY", BaseTypes.DECIMAL,new BigDecimal(ELEC_PROD_DAILY).setScale(2,BigDecimal.ROUND_HALF_UP).doubleValue());
+        report_data[2] = new Parameter("ELEC_PROD_DAILY", BaseTypes.DECIMAL,new BigDecimal(elecDaily).setScale(2,BigDecimal.ROUND_HALF_UP).doubleValue());
         report_data[3] = new Parameter("ELEC_PROD_MONTH", BaseTypes.DECIMAL,new BigDecimal(ELEC_PROD_MONTH).setScale(2,BigDecimal.ROUND_HALF_UP).doubleValue());
         report_data[4] = new Parameter("ELEC_PROD_YEAR", BaseTypes.DECIMAL,new BigDecimal(ELEC_PROD_YEAR).setScale(2,BigDecimal.ROUND_HALF_UP).doubleValue());
-        report_data[5] = new Parameter("ELEC_PROD_ALL", BaseTypes.DECIMAL,new BigDecimal(ELEC_PROD_ALL).setScale(2,BigDecimal.ROUND_HALF_UP).doubleValue());
+        report_data[5] = new Parameter("ELEC_PROD_ALL", BaseTypes.DECIMAL,new BigDecimal(elecAll).setScale(2,BigDecimal.ROUND_HALF_UP).doubleValue());
         report_data[6] = new Parameter("RADIANT_QUANTITY_1", BaseTypes.DECIMAL,new BigDecimal(RADIANT_QUANTITY_1).setScale(2,BigDecimal.ROUND_HALF_UP).doubleValue());
         report_data[7] = new Parameter("RADIANT_QUANTITY_2", BaseTypes.DECIMAL,new BigDecimal(RADIANT_QUANTITY_2).setScale(2,BigDecimal.ROUND_HALF_UP).doubleValue());
         report_data[8] = new Parameter("IRRADIANCE_1",BaseTypes.DECIMAL,new BigDecimal(IRRADIANCE_1).setScale(2,BigDecimal.ROUND_HALF_UP).doubleValue());
@@ -666,9 +683,12 @@ public class YcObject {
     }
 
     public void setELEC_PROD_ALL(double ELEC_PROD_ALL) {
+        double calcAll = this.ELEC_PROD_ALL;
         this.ELEC_PROD_ALL = ELEC_PROD_ALL;
         this.flag=true;
-        this.sendRabbitMq("SERIAL","ELEC_PROD_ALL",new BigDecimal(ELEC_PROD_ALL).setScale(2,BigDecimal.ROUND_HALF_UP).doubleValue());
+        if (Math.abs(this.ELEC_PROD_ALL - calcAll) <= 10) {
+            this.sendRabbitMq("SERIAL","ELEC_PROD_ALL",new BigDecimal(ELEC_PROD_ALL).setScale(2,BigDecimal.ROUND_HALF_UP).doubleValue());
+        }
     }
 
     public double getOUTPUT_P() {
