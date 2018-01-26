@@ -419,12 +419,12 @@ public class YcObject {
                     try {
                         //初次直接执行插入，或者elecProdAllMap中有数据，并且五分钟的总发电量数据相隔在10度以内时，执行插入操作
                         if ((elecProdAllMap.size() != 0 && Math.abs(ELEC_PROD_ALL -
-                                Double.parseDouble(elecProdAllMap.get("ELEC_PROD_ALL").toString())) <= 10) || (elecProdAllMap.size() == 0)) {
+                                Double.parseDouble(elecProdAllMap.get("ELEC_PROD_ALL").toString())) <= 10) || (elecProdAllMap.size() == 0 && ELEC_PROD_ALL != 0)) {
                             elecProdAllMap.put("ELEC_PROD_ALL", ELEC_PROD_ALL);
                             elecProdDailyMap.put("ELEC_PROD_DAILY", ELEC_PROD_DAILY);
                             SqlHelper.executeNonQuery(conn, CommandType.Text, sql, params);
                         } else {
-                            log.info("五分钟的发电量数据超过10度，数据有误，不执行插入操作！");
+                            log.info("发电数据有误，不执行插入操作！");
                         }
                         //将最新数据更新到逆变器实时数据表
                         SqlHelper.executeNonQuery(conn, CommandType.Text, inverter_data_now, params_new_data);
